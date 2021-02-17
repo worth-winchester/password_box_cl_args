@@ -10,6 +10,9 @@ import random
 import bcrypt
 import sys
 
+#Note: remember this program needs python3 to run.
+#   to execute use "python3 password_box_cl_args" in the terminal
+
 class Cryptor:
     def encrypt(self, key):
         fernet = Fernet(key)
