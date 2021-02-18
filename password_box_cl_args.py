@@ -122,92 +122,182 @@ class DBManager:
         self.cursor.execute("INSERT INTO passwords VALUES (?, ?)", temp)
 
     def search_pwd(self, service):
-        temp = (service,)
-        self.cursor.execute("SELECT pwd FROM passwords WHERE service=?", temp)
-        pwd_tuple = self.cursor.fetchone()
-        pwd, = pwd_tuple
-        return pwd
+        try:
+            temp = (service,)
+            self.cursor.execute("SELECT pwd FROM passwords WHERE service=?", temp)
+            pwd_tuple = self.cursor.fetchone()
+            pwd, = pwd_tuple
+            return pwd
+        except:
+            print("Search returned no result.")
 
     def delete_pwd(self, service):
         temp = (service,)
         self.cursor.execute("DELETE FROM passwords WHERE service=?", temp)
 
+
+class ArgumentHandler:
+    def __init__(self):
+        self.argLengths = {"unlock": 3, "lock": 3, "add": 5, "delete": 3, "search": 3, "init": 3, "pwgen": 7}
+
+
+    def doesFileExist(self, argIndex):
+        if os.path.isfile(sys.argv[argIndex]) == False:
+            print(sys.argv[argIndex] + " does not exist in the current directory.")
+            return False
+        else:
+            return True
+
+
+    def isArgInt(self, argIndex):
+        try:
+            length = int(sys.argv[argIndex])
+            if type(length) is int:
+                return True
+            else:
+                print("The length must be an integer.")
+                return False
+        except:
+            print("The length must be an integer.")
+            return False
+
+    def checkBoolArgs(self):
+        if ((sys.argv[3] == "y") or (sys.argv[3] == "n")) and ((sys.argv[4] == "y") or (sys.argv[4] == "n")) and ((sys.argv[5] == "y") or (sys.argv[5] == "n")) and ((sys.argv[6] == "y") or (sys.argv[6] == "n")):
+            return True
+        else:
+            print("The syntax for the requires 'y' or 'n' for yes or no.")
+            return False
+
+
+    def isArgFlag(self, argIndex):
+        if (sys.argv[argIndex] == "unlock") or (sys.argv[argIndex] == "lock") or (sys.argv[argIndex] == "add") or (sys.argv[argIndex] == "delete") or (sys.argv[argIndex] == "search") or (sys.argv[argIndex] == "init") or (sys.argv[argIndex] == "pwgen"):
+            return True
+        else:
+            print("The appropriate syntax is as follows:")
+            print("python3 password_box_cl_args.py unlock 'password'")
+            print("python3 password_box_cl_args.py lock 'password'")
+            print("python3 password_box_cl_args.py add 'service' 'password' 'passwordConfirmation'")
+            print("python3 password_box_cl_args.py delete 'service'")
+            print("python3 password_box_cl_args.py search 'service'")
+            print("python3 password_box_cl_args.py init 'password'")
+            print("python3 password_box_cl_args.py pwgen 'length' 'lowercase(y/n)' 'uppercase(y/n)' 'numbers(y/n)' 'symbols(y/n)'")
+            return False
+
+
+    def argsLengthCorrect(self, argIndex):
+        if sys.argv[argIndex] == "unlock":
+            key = "unlock"
+        if sys.argv[argIndex] == "lock":
+            key = "lock"
+        if sys.argv[argIndex] == "add":
+            key = "add"
+        if sys.argv[argIndex] == "delete":
+            key = "delete"
+        if sys.argv[argIndex] == "search":
+            key = "search"
+        if sys.argv[argIndex] == "init":
+            key = "init"
+        if sys.argv[argIndex] == "pwgen":
+            key = "pwgen"
+        value = self.argLengths[key]
+        if value == len(sys.argv):
+            return True
+        else:
+            return False
+        
+
 def main():
-    if sys.argv[1] == "unlock":
-        pwd = sys.argv[2]
-        hashmaker = HashMaker()
-        hashed = hashmaker.get_hash()
-        authenticator = Authenticator(hashed)
-        if authenticator.authenticate(pwd):
-            saltmaker = SaltMaker()
-            salt = saltmaker.get_salt()
-            keymaker = KeyMaker(salt)
-            key = keymaker.make_key(pwd)
-            cryptor = Cryptor()
-            cryptor.decrypt(key)
-            print("Unlock Completed")
-        else:
-            print("Unlock Failed")
-    if sys.argv[1] == "lock":
-        pwd = sys.argv[2]
-        hashmaker = HashMaker()
-        hashed = hashmaker.get_hash()
-        authenticator = Authenticator(hashed)
-        if authenticator.authenticate(pwd):
-            saltmaker = SaltMaker()
-            salt = saltmaker.get_salt()
-            keymaker = KeyMaker(salt)
-            key = keymaker.make_key(pwd)
-            cryptor = Cryptor()
-            cryptor.encrypt(key)
-            print("Lock Completed")
-        else:
-            print("Lock Failed")
-    if sys.argv[1] == "search":
-        service = sys.argv[2]
-        dbmanager = DBManager()
-        pwd = dbmanager.search_pwd(service)
-        print(pwd)
-    if sys.argv[1] == "add":
-        service = sys.argv[2]
-        pwd = sys.argv[3]
-        confirm = sys.argv[4]
-        if pwd == confirm:
-            dbmanager = DBManager()
-            dbmanager.insert_pwd(service, pwd)
-            dbmanager.commit_close()
-            print("Add Completed")
-        else:
-            print("Add Failed")
-    if sys.argv[1] == "delete":
-        service = sys.argv[2]
-        dbmanager = DBManager()
-        dbmanager.delete_pwd(service)
-        dbmanager.commit_close()
-        print("Delete Completed")
-    if sys.argv[1] == "generate":
-        length = sys.argv[2]
-        lowerBool = sys.argv[3]
-        upperBool = sys.argv[4]
-        numBool = sys.argv[5]
-        symBool = sys.argv[6]
-        pwdmaker = PWDMaker(length, lowerBool, upperBool, numBool, symBool)
-        pwd = pwdmaker.make_pwd()
-        print(pwd)
-    if sys.argv[1] == "initialize":
-        pwd = sys.argv[2]
-        hashmaker = HashMaker()
-        hashmaker.make_hash_file(pwd)
-        dbmanager = DBManager()
-        dbmanager.make_pwd_table()
-        dbmanager.commit_close()
-        saltmaker = SaltMaker()
-        saltmaker.make_salt_file()
-        salt = saltmaker.get_salt()
-        keymaker = KeyMaker(salt)
-        key = keymaker.make_key(pwd)
-        cryptor = Cryptor()
-        cryptor.encrypt(key)
-        print("Initialize Completed")
+    arghandler = ArgumentHandler()
+    if arghandler.isArgFlag(1):
+        if arghandler.argsLengthCorrect(1):
+            if (sys.argv[1] == "unlock") or (sys.argv[1] == "lock") or (sys.argv[1] == "delete") or (sys.argv[1] == "search") or (sys.argv[1] == "init"):
+                if sys.argv[1] == "unlock":
+                    pwd = sys.argv[2]
+                    hashmaker = HashMaker()
+                    hashed = hashmaker.get_hash()
+                    authenticator = Authenticator(hashed)
+                    if authenticator.authenticate(pwd):
+                        saltmaker = SaltMaker()
+                        salt = saltmaker.get_salt()
+                        keymaker = KeyMaker(salt)
+                        key = keymaker.make_key(pwd)
+                        cryptor = Cryptor()
+                        cryptor.decrypt(key)
+                        print("Unlock Completed")
+                    else:
+                        print("Unlock Failed")
+                if sys.argv[1] == "lock":
+                    pwd = sys.argv[2]
+                    hashmaker = HashMaker()
+                    hashed = hashmaker.get_hash()
+                    authenticator = Authenticator(hashed)
+                    if authenticator.authenticate(pwd):
+                        saltmaker = SaltMaker()
+                        salt = saltmaker.get_salt()
+                        keymaker = KeyMaker(salt)
+                        key = keymaker.make_key(pwd)
+                        cryptor = Cryptor()
+                        cryptor.encrypt(key)
+                        print("Lock Completed")
+                    else:
+                        print("Lock Failed")
+                if sys.argv[1] == "delete":
+                    service = sys.argv[2]
+                    dbmanager = DBManager()
+                    dbmanager.delete_pwd(service)
+                    dbmanager.commit_close()
+                    print("Delete Completed")
+                if sys.argv[1] == "search":
+                    service = sys.argv[2]
+                    dbmanager = DBManager()
+                    pwd = dbmanager.search_pwd(service)
+                    if pwd != None:
+                        print(pwd)
+                if sys.argv[1] == "init":
+                    pwd = sys.argv[2]
+                    hashmaker = HashMaker()
+                    hashmaker.make_hash_file(pwd)
+                    dbmanager = DBManager()
+                    dbmanager.make_pwd_table()
+                    dbmanager.commit_close()
+                    saltmaker = SaltMaker()
+                    saltmaker.make_salt_file()
+                    salt = saltmaker.get_salt()
+                    keymaker = KeyMaker(salt)
+                    key = keymaker.make_key(pwd)
+                    cryptor = Cryptor()
+                    cryptor.encrypt(key)
+                    print("Initialization Completed")
+            if sys.argv[1] == "add":
+                service = sys.argv[2]
+                pwd = sys.argv[3]
+                confirm = sys.argv[4]
+                if pwd == confirm:
+                    dbmanager = DBManager()
+                    dbmanager.insert_pwd(service, pwd)
+                    dbmanager.commit_close()
+                    print("Add Completed")
+                else:
+                    print("Add Failed")
+            if sys.argv[1] == "pwgen":
+                if arghandler.isArgInt(2):
+                    if arghandler.checkBoolArgs():
+                        length = int(sys.argv[2])
+                        lowerBool = False
+                        upperBool = False
+                        numBool = False
+                        symBool = False
+                        if sys.argv[3] == "y":
+                            lowerBool = True
+                        if sys.argv[4] == "y":
+                            upperBool = True
+                        if sys.argv[5] == "y":
+                            numBool = True
+                        if sys.argv[6] == "y":
+                            symBool = True
+                        pwdmaker = PWDMaker(length, lowerBool, upperBool, numBool, symBool)
+                        pwd = pwdmaker.make_pwd()
+                        print(pwd)
+    
 
 main()
